@@ -3,6 +3,7 @@
 require 'simplecov'
 SimpleCov.start
 
+require 'pry'
 require 'chrono_model'
 
 require 'support/connection'
