@@ -78,7 +78,8 @@ describe ChronoModel::TimeMachine do
       'foos'     => Foo::History,
       'defoos'   => Defoo::History,
       'bars'     => Bar::History,
-      'elements' => Element::History
+      'elements' => Element::History,
+      'pips'     => Pip::History
     ) }
   end
 
@@ -242,6 +243,23 @@ describe ChronoModel::TimeMachine do
     context 'on the last history entry' do
       subject { foo.history.last.pred }
       it { is_expected.to eq foo.history[foo.history.size - 2] }
+    end
+
+    context 'on records having history' do
+      subject { bar.pred }
+      it { expect(subject.name).to eq 'bar bar' }
+    end
+
+    context 'when there is enough history' do
+      subject { bar.pred.pred.pred.pred }
+      it { expect(subject.name).to eq 'bar' }
+    end
+
+    context 'when no history is recorded' do
+      let(:record) { Bar.create!(:name => 'quuuux') }
+      subject { record.pred }
+      it { is_expected.to be(nil) }
+      after { record.destroy.history.delete_all }
     end
   end
 
@@ -454,25 +472,6 @@ describe ChronoModel::TimeMachine do
     end
   end
 
-  describe '#pred' do
-    context 'on records having history' do
-      subject { bar.pred }
-      it { expect(subject.name).to eq 'bar bar' }
-    end
-
-    context 'when there is enough history' do
-      subject { bar.pred.pred.pred.pred }
-      it { expect(subject.name).to eq 'bar' }
-    end
-
-    context 'when no history is recorded' do
-      let(:record) { Bar.create!(:name => 'quuuux') }
-      subject { record.pred }
-      it { is_expected.to be(nil) }
-      after { record.destroy.history.delete_all }
-    end
-  end
-
   describe 'timestamp methods' do
     history_methods = %w( valid_from valid_to recorded_at )
     current_methods = %w( as_of_time )
@@ -510,11 +509,10 @@ describe ChronoModel::TimeMachine do
         end
       end
     end
-
   end
 
   # Class methods
-  context do
+  describe "class methods" do
     foos = Array.new(2) {|i| ts_eval { Foo.create! :name => "foo #{i}" } }
     bars = Array.new(2) {|i| ts_eval { Bar.create! :name => "bar #{i}", :foo => foos[i] } }
 
@@ -577,7 +575,20 @@ describe ChronoModel::TimeMachine do
 
       it { expect(Foo.history.past.size).to eq 2 }
     end
+  end
 
+  describe "associations" do
+    describe "has_many :through" do
+      before do
+        @foo = Foo.create!
+        @pip = Pip.create!(name: "hello", foo_id: @foo.id)
+      end
+
+      it "runs the queries correctly" do
+        expect(@pip.as_of(Time.new).foo.bars.count).to eq(0)
+        expect(@pip.as_of(Time.new).bars.count).to eq(0)
+      end
+    end
   end
 
   # Transactions

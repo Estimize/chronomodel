@@ -71,6 +71,11 @@ module ChronoTest::Helpers
           t.references :bar
         end
 
+        adapter.create_table 'pips', temporal: true do |t|
+          t.string     :name
+          t.references :foo
+        end
+
         adapter.create_table 'defoos', :temporal => true do |t|
           t.string  :name
           t.boolean :active
@@ -105,6 +110,13 @@ module ChronoTest::Helpers
           has_one :baz
 
           has_timeline :with => :foo
+        end
+
+        class ::Pip < ActiveRecord::Base
+          include ChronoModel::TimeMachine
+
+          belongs_to :foo
+          has_many :bars, through: :foo
         end
 
         class ::Baz < ActiveRecord::Base
